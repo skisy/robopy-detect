@@ -48,15 +48,15 @@ def matchAndBox(img1,kp1,img2,kp2,matches):
 
     return img2
 
-def displayMatch(obj):
+if __name__ == "__main__":
 
     # Set up a parser for command line arguments
-    #parser = argparse.ArgumentParser( "Detect object" )
-    #parser.add_argument( "object", default="id", nargs='?', help="The object to detect" )
+    parser = argparse.ArgumentParser( "Detect object" )
+    parser.add_argument( "object", default="id", nargs='?', help="The object to detect" )
 
-    #args = parser.parse_args()
+    args = parser.parse_args()
 
-    path = 'trainImg/' + obj + ".jpg"
+    path = 'trainImg/' + args.object + ".jpg"
 
     # Load training image as grayscale
     img1 = cv2.imread(path,0)
