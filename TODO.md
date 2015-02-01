@@ -1,6 +1,6 @@
 # To do
 - - [ ] Improve Interface
--- [ ] Improve design
+-- - [ ] Improve design
 -- [ ] Introduce python multiprocessing to enable button control over stream (start,stop)
 -- [ ] Add new object faciltity
 --- [ ] Store objects and image names in tuples in a text file
