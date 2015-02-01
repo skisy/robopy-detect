@@ -1,5 +1,5 @@
 # To do
-- [ ] Improve Interface
+- - [ ] Improve Interface
 -- [ ] Improve design
 -- [ ] Introduce python multiprocessing to enable button control over stream (start,stop)
 -- [ ] Add new object faciltity
