@@ -27,8 +27,8 @@ if __name__ == "__main__":
     #img1 = cv2.imread('trainImg/sid.jpg',0)          # queryImage
     cam = cv2.VideoCapture(0)
 
-    # Initiate SIFT detector
-    surf = xf.SURF_create(10)
+    # Initiate SURF detector
+    surf = xf.SURF_create(50)
 
     # find the keypoints and descriptors with SIFT
     kp1, des1 = surf.detectAndCompute(img1,None)
