@@ -56,7 +56,7 @@ def displayMatch(obj):
 
     #args = parser.parse_args()
 
-    path = 'trainImg/' + obj + ".jpg"
+    path = 'trainImg/' + obj
 
     # Load training image as grayscale
     img1 = cv2.imread(path,0)
