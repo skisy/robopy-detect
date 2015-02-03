@@ -4,7 +4,7 @@ import cv2
 from cv2 import xfeatures2d as xf
 from matplotlib import pyplot as plt
 
-MIN_MATCH_COUNT = 20
+MIN_MATCH_COUNT = 30
 
 def matchAndBox(img1,kp1,img2,kp2,matches):
 
@@ -50,12 +50,7 @@ def matchAndBox(img1,kp1,img2,kp2,matches):
 
 def displayMatch(obj):
 
-    # Set up a parser for command line arguments
-    #parser = argparse.ArgumentParser( "Detect object" )
-    #parser.add_argument( "object", default="id", nargs='?', help="The object to detect" )
-
-    #args = parser.parse_args()
-
+    # Path to object image
     path = 'trainImg/' + obj
 
     # Load training image as grayscale

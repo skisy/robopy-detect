@@ -49,3 +49,29 @@ root = Tk()
 app = DetectAndTrainUI(root)
 root.title("Detect And Train")
 root.mainloop()
+
+
+
+#def locateObject():
+#	obj_file = tkFileDialog.askopenfilename()
+
+
+#def addTrainingObject():
+#	add_obj = Tk()
+	
+#	obj_name_lbl = Label(add_obj, text="Object Name:")
+
+#	obj_name = Entry(add_obj)
+
+#	path_lbl = Label(add_obj, text="Object Image:")
+
+#	filepath = StringVar()
+#	path = Entry(add_obj, textvariable=filepath)
+
+#	loc_obj = Button(add_obj, text="Locate", command=locateObject)
+
+	#obj_name_lbl.pack()
+	#obj_name.pack()
+	#path_lbl.pack()
+	#path.pack()
+	#loc_obj.pack()
