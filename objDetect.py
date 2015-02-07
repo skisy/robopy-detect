@@ -4,18 +4,16 @@ import cv2
 from cv2 import xfeatures2d as xf
 from matplotlib import pyplot as plt
 
-MIN_MATCH_COUNT = 20
-
-def matchAndBox(img1,kp1,img2,kp2,matches):
+def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
     # Filter matches to keep only "good" matches
     good_matches = []
     for m,n in matches:
-        if m.distance < 0.7 * n.distance:
+        if m.distance < alg_params['good_distance'] * n.distance:
             good_matches.append(m)
 
     # Only draw box if number of matches is greater than the set minimum (avoids excessive false alarms)
-    if len(good_matches) > MIN_MATCH_COUNT:
+    if len(good_matches) > alg_params['min_match_num']:
         # Catch frame errors
         try:
             source_pts = np.float32([ kp1[m.queryIdx].pt for m in good_matches ]).reshape(-1,1,2)
@@ -48,15 +46,10 @@ def matchAndBox(img1,kp1,img2,kp2,matches):
 
     return img2
 
-if __name__ == "__main__":
+def displayMatch(obj,alg_params):
 
-    # Set up a parser for command line arguments
-    parser = argparse.ArgumentParser( "Detect object" )
-    parser.add_argument( "object", default="id", nargs='?', help="The object to detect" )
-
-    args = parser.parse_args()
-
-    path = 'trainImg/' + args.object + ".jpg"
+    # Path to object image
+    path = 'trainImg/' + obj
 
     # Load training image as grayscale
     img1 = cv2.imread(path,0)
@@ -65,7 +58,10 @@ if __name__ == "__main__":
     cam = cv2.VideoCapture(0)
 
     # Initiate SURF detector with initial hessian value 
-    surf = xf.SURF_create(50)
+    surf = xf.SURF_create(alg_params['hes_threshold'])
+    
+    # Setting Upright flags means algorithm does not consider rotation - still good to about 15 degrees
+    #surf.setUpright(True)
 
     # Detect keypoints and compute descriptors using SURF algorithm
     kp1, des1 = surf.detectAndCompute(img1,None)
@@ -92,7 +88,7 @@ if __name__ == "__main__":
         # Calculate matches with FLANN
         matches = flann.knnMatch(des1,des2,k=2)
 
-        img2 = matchAndBox(img1,kp1,img2,kp2,matches)
+        img2 = matchAndBox(img1,kp1,img2,kp2,matches,alg_params)
 
         cv2.imshow("Live Stream with Detected Objects", img2)
         if cv2.waitKey(1) & 0xFF == ord('q'):
