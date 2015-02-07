@@ -60,7 +60,8 @@ def displayMatch(obj):
     cam = cv2.VideoCapture(0)
 
     # Initiate SURF detector with initial hessian value 
-    surf = xf.SURF_create(50)
+    surf = xf.SURF_create(500)
+    surf.setUpright(True)
 
     # Detect keypoints and compute descriptors using SURF algorithm
     kp1, des1 = surf.detectAndCompute(img1,None)
