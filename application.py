@@ -1,4 +1,5 @@
 from Tkinter import *
+import cv2
 import helper as h
 import tkFileDialog
 import tkMessageBox
@@ -212,12 +213,17 @@ class AddObjDialog():
 		obj = []
 		obj.append(self.name.get())
 		obj.append(self.filename)
+		temp_path = self.filepath + ".temp"
+
+		shutil.copyfile(self.filepath, temp_path)
+
+		h.cropImage(temp_path)
 
 		new_path = "trainImg/" + self.filename
 
 		try:
 			if not(osp.isfile(new_path)):
-				shutil.copyfile(self.filepath,new_path)
+				shutil.copyfile(temp_path,new_path)
 
 			self.settings.objects.append(obj)
 			self.settings.master.focus_force()
