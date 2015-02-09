@@ -1,10 +1,12 @@
 from Tkinter import *
+import cv2
 import helper as h
 import tkFileDialog
 import tkMessageBox
 import tkFont
 import shutil
 from os import path as osp
+import os
 import objDetect
 
 def setListboxItems(objects, listbox):
@@ -49,7 +51,7 @@ class MainApp():
 
 	def _searchForObject(self):
 		alg_params = dict([('hes_threshold',self.hessian_threshold),('min_match_num',self.min_match),('good_distance',self.distance)])
-		print alg_params['hes_threshold']
+		#print alg_params['hes_threshold']
 		try:
 			obj_index = self.select_li.curselection()[0]
 			objects = h.processFile('objects.csv')
@@ -212,12 +214,19 @@ class AddObjDialog():
 		obj = []
 		obj.append(self.name.get())
 		obj.append(self.filename)
-
-		new_path = "trainImg/" + self.filename
+		path, ext = osp.splitext(self.filepath)
+		temp_path = path + ".temp" + ext
 
 		try:
+			shutil.copyfile(self.filepath, temp_path)
+
+			h.cropImage(temp_path)
+
+			new_path = "trainImg/" + self.filename
+			
 			if not(osp.isfile(new_path)):
-				shutil.copyfile(self.filepath,new_path)
+				shutil.copyfile(temp_path,new_path)
+			os.remove(temp_path)	
 
 			self.settings.objects.append(obj)
 			self.settings.master.focus_force()
@@ -232,8 +241,8 @@ class AddObjDialog():
 			self.filepath = filepath
 			path = filepath.split("/")
 			self.filename = path[len(path)-1]
-			print self.filepath
-			print self.filename
+			#print self.filepath
+			#print self.filename
 		self.master.focus_force()
 
 

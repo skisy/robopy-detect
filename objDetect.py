@@ -4,6 +4,20 @@ import cv2
 from cv2 import xfeatures2d as xf
 from matplotlib import pyplot as plt
 
+def robotMove(centre, height, width):
+    if centre[0] < (width / 5):
+        print "Turn Left"
+    elif centre[0] > (width / 5 * 4):
+        print "Turn Right"
+    else:
+        if centre[1] < (width / 5):
+            print "Look Down"
+        elif centre[1] > (width / 5 * 4):
+            print "Look Up"
+
+        print "Move Forward"
+
+
 def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
     # Filter matches to keep only "good" matches
@@ -29,6 +43,7 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             points = np.float32([ [0,0],[0,height-1],[width-1,height-1],[width-1,0] ]).reshape(-1,1,2)
             dest = cv2.perspectiveTransform(points, M)
 
+            # Draw box around object in image
             img2 = cv2.polylines(img2, [np.int32(dest)], True, 255, 3, cv2.LINE_AA)
 
             # Corner points of mask applied to frame image
@@ -36,8 +51,10 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             y = [ np.int32(dest[0][0][1]), np.int32(dest[1][0][1]), np.int32(dest[2][0][1]), np.int32(dest[3][0][1])]
 
             # Calculate approximate centroid
-            objcentre = (sum(x) / len(x), sum(y) / len(y))
-            img2 = cv2.circle(img2, objcentre,5, (0,0,255))
+            obj_centre = (sum(x) / len(x), sum(y) / len(y))
+            img2 = cv2.circle(img2, obj_centre,5, (0,0,255))
+
+            robotMove(obj_centre, height, width)
         except AttributeError:
             print "Empty Mask"
     else:
