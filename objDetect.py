@@ -36,6 +36,7 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
             # Draw box around object in image
             img2 = cv2.polylines(img2, [np.int32(dest)], True, 255, 3, cv2.LINE_AA)
+            feed_height, feed_width, channels = img2.shape
 
             # Corner points of mask applied to frame image
             x = [ np.int32(dest[0][0][0]), np.int32(dest[1][0][0]), np.int32(dest[2][0][0]), np.int32(dest[3][0][0])]
@@ -45,7 +46,7 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             obj_centre = (sum(x) / len(x), sum(y) / len(y))
             img2 = cv2.circle(img2, obj_centre,5, (0,0,255))
 
-            match_feedback = rc.robotMove(obj_centre, height, width, MOVE_TOLERANCE, match_feedback)
+            match_feedback = rc.robotMove(obj_centre, feed_height, feed_width, MOVE_TOLERANCE, match_feedback)
 
         except AttributeError:
             print "Empty Mask"

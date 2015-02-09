@@ -14,21 +14,18 @@ def robotMove(centre, height, width, move_tolerance, match_feedback):
         if centre[0] < (width / 5):
             rc = 0
             lc += 1
-            if lc > 2:
-                lc = 0
-                print "Turn Left"
+            lc = 0
+            print "Turn Left"
         elif centre[0] > (width / 5 * 4):
             lc = 0
             rc += 1
-            if rc > 2:
-                rc = 0
-                print "Turn Right"
+            rc = 0
+            print "Turn Right"
+        elif centre[1] < (height / 5):
+            print "Look up"
+        elif centre[1] > (height / 5 * 4):
+            print "Look down"
         else:
-            if centre[1] < (height / 5):
-                print "Look up"
-            elif centre[1] > (height / 5 * 4):
-                print "Look down"
-
             print "Move Forward"
     else:
         print "Distance too great"

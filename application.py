@@ -22,9 +22,9 @@ class MainApp():
 		self.master.title("DALA")
 		self.master.geometry('198x440')
 
-		self.hessian_threshold = 500
-		self.min_match = 20
-		self.distance = 0.7
+		self.hessian_threshold = 600
+		self.min_match = 25
+		self.distance = 0.65
 
 		self.search_lbl = Label(self.master, text="Select object to locate")
 		self.search_lbl.grid(row=1,column=0,columnspan=2,pady=(8,0))
@@ -110,7 +110,7 @@ class SettingsDialog():
 		self.hessian_lbl = Label(self.master, text="Hessian Threshold:")
 		self.hessian_lbl.grid(row=2,column=1,pady=5,sticky=E)
 
-		self.hessian_scale = Scale(self.master, from_=0, to_=600,orient=HORIZONTAL,length=500)
+		self.hessian_scale = Scale(self.master, from_=0, to_=1000,orient=HORIZONTAL,length=500)
 		self.hessian_scale.grid(row=2,column=2,columnspan=3)
 		self.hessian_scale.set(main.getHessian())
 
