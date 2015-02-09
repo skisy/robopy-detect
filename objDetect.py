@@ -1,24 +1,15 @@
 import numpy as np
 import argparse
 import cv2
+import robotControl as rc
 from cv2 import xfeatures2d as xf
 from matplotlib import pyplot as plt
 
-def robotMove(centre, height, width):
-    if centre[0] < (width / 5):
-        print "Turn Left"
-    elif centre[0] > (width / 5 * 4):
-        print "Turn Right"
-    else:
-        if centre[1] < (width / 5):
-            print "Look Down"
-        elif centre[1] > (width / 5 * 4):
-            print "Look Up"
-
-        print "Move Forward"
-
+MOVE_TOLERANCE = 100
 
 def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
+
+    global match_feedback
 
     # Filter matches to keep only "good" matches
     good_matches = []
@@ -54,7 +45,8 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             obj_centre = (sum(x) / len(x), sum(y) / len(y))
             img2 = cv2.circle(img2, obj_centre,5, (0,0,255))
 
-            robotMove(obj_centre, height, width)
+            match_feedback = rc.robotMove(obj_centre, height, width, MOVE_TOLERANCE, match_feedback)
+
         except AttributeError:
             print "Empty Mask"
     else:
@@ -64,6 +56,10 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
     return img2
 
 def displayMatch(obj,alg_params):
+
+    global match_feedback
+
+    match_feedback = dict([('left_counter',0),('right_counter',0),('loc_counter',0),('last_centre',(0,0))])
 
     # Path to object image
     path = 'trainImg/' + obj
@@ -106,6 +102,9 @@ def displayMatch(obj,alg_params):
         matches = flann.knnMatch(des1,des2,k=2)
 
         img2 = matchAndBox(img1,kp1,img2,kp2,matches,alg_params)
+        #print match_feedback['left_counter']
+        #print match_feedback['right_counter']
+        #print match_feedback['last_centre']
 
         cv2.imshow("Live Stream with Detected Objects", img2)
         if cv2.waitKey(1) & 0xFF == ord('q'):
