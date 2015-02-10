@@ -71,7 +71,8 @@ def displayMatch(obj,alg_params):
     # Initiate camera feed (will need to be adapted for robot to keep stream alive)
     cam = cv2.VideoCapture(0)
 
-    # Initiate SURF detector with initial hessian value 
+    # Initiate SURF detector with initial hessian value  (set by default or through UI)
+    # Larger threshold should render fewer more salient points, smaller more but less salient points
     surf = xf.SURF_create(alg_params['hes_threshold'])
     
     # Setting Upright flags means algorithm does not consider rotation - still good to about 15 degrees
