@@ -82,8 +82,12 @@ def displayMatch(obj,alg_params):
 
     # Set up parameters for FLANN matching
     FLANN_INDEX_KDTREE = 0
-    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-    search_params = dict(checks = 50)
+
+    # Tell FLANN matcher to use k-dimensional index trees (8) - trees are randomised and searched in parallel
+    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 8)
+
+    # Specify number of times to recursively traverse index trees
+    search_params = dict(checks = 100)
 
     # Initiate FLANN object with parameters
     flann = cv2.FlannBasedMatcher(index_params, search_params)
