@@ -125,16 +125,16 @@ class SettingsDialog():
 		self.obj_lbl.grid(columnspan=2,row=4,column=0,padx=(7,0),pady=(30,10),sticky="w")
 
 		self.add_obj_btn = Button(self.master, text="Add Object", command=self._openAddObj,width=20,height=2)
-		self.add_obj_btn.grid(row=5, column=2,sticky=W,padx=(5,0))
+		self.add_obj_btn.grid(row=5, column=2,sticky="w",padx=(5,0))
 
 		self.remove_obj_btn = Button(self.master, text="Remove Object", command=self._openRemoveObj,width=20,height=2)
 		self.remove_obj_btn.grid(row=5,column=3,padx=(5,0))
 
 		self.cancel_btn = Button(self.master, text="Cancel", command=self._close,width=20,height=2)
-		self.cancel_btn.grid(row=6, column=0,sticky=W,padx=(5,0),pady=(40,0),columnspan=2)
+		self.cancel_btn.grid(row=6, column=0,sticky="w",padx=(5,0),pady=(40,0),columnspan=2)
 
 		self.save_btn = Button(self.master, text="Save", command=self._saveSettings,width=20,height=2)
-		self.save_btn.grid(row=6, column=4,sticky=E,pady=(40,0))
+		self.save_btn.grid(row=6, column=4,sticky="e",pady=(40,0))
 
 	def _close(self):
 		self.objects = self.main.getObjects()

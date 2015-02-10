@@ -2,6 +2,7 @@ import csv
 import Tkinter
 import cv2
 import numpy as np
+import math
 
 def processFile(filepath):
 	with open(filepath, 'rb') as csv_file:
@@ -67,3 +68,31 @@ def cropImage(image_path):
 	(width, height) = np.subtract(bottom_right,top_left)
 	cropped = img[top_left[1]:top_left[1]+height,top_left[0]:top_left[0]+width]
 	cv2.imwrite(image_path,cropped)
+
+def calculateFourSidedPolyArea(p1, p2, p3, p4):
+	d1to2 = calculateDistanceBetweenPoints(p1,p2)
+	print d1to2
+	d2to3 = calculateDistanceBetweenPoints(p2,p3)
+	print d2to3
+	d3to4 = calculateDistanceBetweenPoints(p3,p4)
+	print d3to4
+	d4to1 = calculateDistanceBetweenPoints(p4,p1)
+	print d4to1
+	d4to2 = calculateDistanceBetweenPoints(p4,p2)
+	print d4to2
+
+	t1a = calculateAreaOfTriangle(d1to2,d4to2,d4to1)
+	t2a = calculateAreaOfTriangle(d4to2,d3to4,d2to3)
+
+	area = t1a + t2a
+
+	return area
+	
+
+def calculateDistanceBetweenPoints(p1,p2):
+	return math.hypot(p1[0] - p2[0], p1[1] - p2[1])
+
+def calculateAreaOfTriangle(s1,s2,s3):
+	p = (s1 + s2 + s3) / 2
+	area = math.sqrt((p*(p-s1)*(p-s2)*(p-s3)))
+	return area

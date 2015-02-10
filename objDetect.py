@@ -1,5 +1,8 @@
+# @TODO Need to handle when no keypoints (currently crashes)
+
 import numpy as np
 import argparse
+import helper as h
 import cv2
 import robotControl as rc
 from cv2 import xfeatures2d as xf
@@ -38,9 +41,22 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             img2 = cv2.polylines(img2, [np.int32(dest)], True, 255, 3, cv2.LINE_AA)
             feed_height, feed_width, channels = img2.shape
 
+            p1 = dest[0][0]
+            p2 = dest[1][0]
+            p3 = dest[2][0]
+            p4 = dest[3][0]
+
             # Corner points of mask applied to frame image
-            x = [ np.int32(dest[0][0][0]), np.int32(dest[1][0][0]), np.int32(dest[2][0][0]), np.int32(dest[3][0][0])]
-            y = [ np.int32(dest[0][0][1]), np.int32(dest[1][0][1]), np.int32(dest[2][0][1]), np.int32(dest[3][0][1])]
+            x = [ np.int32(p1[0]), np.int32(p2[0]), np.int32(p3[0]), np.int32(p4[0])]
+            y = [ np.int32(p1[1]), np.int32(p2[1]), np.int32(p3[1]), np.int32(p4[1])]
+
+            area = h.calculateFourSidedPolyArea(p1,p2,p3,p4)
+            area_percent = area / (feed_width * feed_height) * 100
+            if area_percent > 60:
+                print "Object Found"
+
+            print str(area) + "/" + str(feed_width * feed_height)
+            print area_percent
 
             # Calculate approximate centroid
             obj_centre = (sum(x) / len(x), sum(y) / len(y))
@@ -95,26 +111,29 @@ def displayMatch(obj,alg_params):
 
     # Match and display output loop
     while(True):
-        # Get camera stream frame
-        ret, img2 = cam.read()
+        try:
+            # Get camera stream frame
+            ret, img2 = cam.read()
 
-        # Convert frame to grayscale (algorithm uses pixel gray intensities)
-        gray = cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
+            # Convert frame to grayscale (algorithm uses pixel gray intensities)
+            gray = cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
 
-        # Detect and compute keypoints/descripts for stream frame
-        kp2, des2 = surf.detectAndCompute(gray,None)
+            # Detect and compute keypoints/descripts for stream frame
+            kp2, des2 = surf.detectAndCompute(gray,None)
 
-        # Calculate matches with FLANN
-        matches = flann.knnMatch(des1,des2,k=2)
+            # Calculate matches with FLANN
+            matches = flann.knnMatch(des1,des2,k=2)
 
-        img2 = matchAndBox(img1,kp1,img2,kp2,matches,alg_params)
-        #print match_feedback['left_counter']
-        #print match_feedback['right_counter']
-        #print match_feedback['last_centre']
+            img2 = matchAndBox(img1,kp1,img2,kp2,matches,alg_params)
+            #print match_feedback['left_counter']
+            #print match_feedback['right_counter']
+            #print match_feedback['last_centre']
 
-        cv2.imshow("Live Stream with Detected Objects", img2)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            cv2.imshow("Live Stream with Detected Objects", img2)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        except cv2.error:
+            print "Please check camera feed - ensure it is not obscured"
 
     cam.release()
     cv2.destroyAllWindows()
