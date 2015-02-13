@@ -90,6 +90,9 @@ def displayMatch(obj,alg_params):
     # Initiate SURF detector with initial hessian value  (set by default or through UI)
     # Larger threshold should render fewer more salient points, smaller more but less salient points
     surf = xf.SURF_create(alg_params['hes_threshold'])
+
+    # Set to use 128 descriptor size
+    surf.extended = True
     
     # Setting Upright flags means algorithm does not consider rotation - still good to about 15 degrees
     #surf.setUpright(True)
