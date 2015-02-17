@@ -92,7 +92,9 @@ def displayMatch(obj,alg_params):
     surf = xf.SURF_create(alg_params['hes_threshold'])
 
     # Set to use 128 descriptor size
-    surf.extended = True
+    surf.setExtended(True)
+
+    print dir(surf)
     
     # Setting Upright flags means algorithm does not consider rotation - still good to about 15 degrees
     #surf.setUpright(True)
