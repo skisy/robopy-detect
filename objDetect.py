@@ -8,8 +8,7 @@ from matplotlib import pyplot as plt
 import py_websockets_bot
 
 MOVE_TOLERANCE = 100
-neck_pan = 90
-neck_tilt = 90
+neck_angles = dict([('tilt',70),('pan',90)])
 latest_camera_image = None
 robot = None
 
@@ -21,6 +20,7 @@ def findMatches(image, image_time):
 def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
     global match_feedback
+    global neck_angles
     global robot
 
     # Filter matches to keep only "good" matches
@@ -62,27 +62,32 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
             area = h.calculateFourSidedPolyArea(p1,p2,p3,p4)
             area_percent = area / (feed_width * feed_height) * 100
+            
+            # Change to use object distance (with ultrasonic range finder)
             if area_percent > 50:
                 print "Object Found"
+                robot.set_motor_speeds(0.0,0.0)
 
-            print str(area) + "/" + str(feed_width * feed_height)
-            print area_percent
+            #print str(area) + "/" + str(feed_width * feed_height)
+            #print area_percent
 
             # Calculate approximate centroid
             obj_centre = (sum(x) / len(x), sum(y) / len(y))
             img2 = cv2.circle(img2, obj_centre,5, (0,0,255))
 
-            match_feedback = rc.robotMove(robot, obj_centre, feed_height, feed_width, MOVE_TOLERANCE, match_feedback)
+            match_feedback, neck_angles = rc.robotMove(robot, obj_centre, feed_height, feed_width, MOVE_TOLERANCE, match_feedback, neck_angles)
 
         except AttributeError:
             print "Empty Mask"
     else:
         print "Not enough matches found"
-        match_feedback['no_match'] += 1
-        print match_feedback['no_match']
+        #print match_feedback['no_match']
         if (match_feedback['no_match'] > 20):
+            neck_angles['tilt'] = 70
+            robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
             match_feedback['no_match'] = 0
-            robot.set_motor_speeds(50.0, -50.0)
+            robot.set_motor_speeds(20.0, -20.0)
+        match_feedback['no_match'] += 1
         maskList = None
 
     return img2
@@ -90,9 +95,10 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 def setupMatch(obj,alg_params):
 
     global match_feedback
+    global neck_angles
     global robot
 
-    match_feedback = dict([('left_counter',0),('right_counter',0),('loc_counter',0),('last_centre',(0,0)), ('no_match',0)])
+    match_feedback = dict([('left_counter',0), ('right_counter',0), ('loc_counter',0), ('last_centre',(0,0)), ('no_match',0)])
 
     # Path to object image
     path = 'trainImg/' + obj
@@ -131,7 +137,8 @@ def setupMatch(obj,alg_params):
     robot = py_websockets_bot.WebsocketsBot("192.168.42.1")
     robot.start_streaming_camera_images(findMatches)
     #robot.centre_neck()
-    robot.set_neck_angles(pan_angle_degrees=90.0, tilt_angle_degrees=70.0)
+    robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
+    feed_error = 0
 
     # Match and display output loop
     while(True):
@@ -153,12 +160,16 @@ def setupMatch(obj,alg_params):
                 #print match_feedback['left_counter']
                 #print match_feedback['right_counter']
                 #print match_feedback['last_centre']
-                cv2.imshow("Live Stream with Detected Objects", img2) 
+                cv2.imshow("Live Stream with Detected Objects", img2)
+                feed_error = 0 
                 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         except cv2.error:
-            robot.set_motor_speeds(50.0, -50.0)
+            if feed_error > 5:
+                robot.set_motor_speeds(20.0, -20.0)
+            feed_error += 1
+            match_feedback['no_match'] = 0            
             print "Please check camera feed - ensure it is not obscured"
     robot.disconnect()
     cv2.destroyAllWindows()
