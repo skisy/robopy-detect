@@ -1,5 +1,3 @@
-# @TODO Need to handle when no keypoints (currently crashes)
-
 import numpy as np
 import argparse
 import helper as h
@@ -7,12 +5,23 @@ import cv2
 import robotControl as rc
 from cv2 import xfeatures2d as xf
 from matplotlib import pyplot as plt
+import py_websockets_bot
 
 MOVE_TOLERANCE = 100
+neck_pan = 90
+neck_tilt = 90
+latest_camera_image = None
+robot = None
+
+def findMatches(image, image_time):
+    global latest_camera_image
+
+    latest_camera_image = image
 
 def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
     global match_feedback
+    global robot
 
     # Filter matches to keep only "good" matches
     good_matches = []
@@ -22,6 +31,7 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
     # Only draw box if number of matches is greater than the set minimum (avoids excessive false alarms)
     if len(good_matches) > alg_params['min_match_num']:
+        match_feedback['no_match'] = 0
         # Catch frame errors
         try:
             source_pts = np.float32([ kp1[m.queryIdx].pt for m in good_matches ]).reshape(-1,1,2)
@@ -52,7 +62,7 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
             area = h.calculateFourSidedPolyArea(p1,p2,p3,p4)
             area_percent = area / (feed_width * feed_height) * 100
-            if area_percent > 60:
+            if area_percent > 50:
                 print "Object Found"
 
             print str(area) + "/" + str(feed_width * feed_height)
@@ -62,21 +72,27 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             obj_centre = (sum(x) / len(x), sum(y) / len(y))
             img2 = cv2.circle(img2, obj_centre,5, (0,0,255))
 
-            match_feedback = rc.robotMove(obj_centre, feed_height, feed_width, MOVE_TOLERANCE, match_feedback)
+            match_feedback = rc.robotMove(robot, obj_centre, feed_height, feed_width, MOVE_TOLERANCE, match_feedback)
 
         except AttributeError:
             print "Empty Mask"
     else:
         print "Not enough matches found"
+        match_feedback['no_match'] += 1
+        print match_feedback['no_match']
+        if (match_feedback['no_match'] > 20):
+            match_feedback['no_match'] = 0
+            robot.set_motor_speeds(50.0, -50.0)
         maskList = None
 
     return img2
 
-def displayMatch(obj,alg_params):
+def setupMatch(obj,alg_params):
 
     global match_feedback
+    global robot
 
-    match_feedback = dict([('left_counter',0),('right_counter',0),('loc_counter',0),('last_centre',(0,0))])
+    match_feedback = dict([('left_counter',0),('right_counter',0),('loc_counter',0),('last_centre',(0,0)), ('no_match',0)])
 
     # Path to object image
     path = 'trainImg/' + obj
@@ -85,7 +101,7 @@ def displayMatch(obj,alg_params):
     img1 = cv2.imread(path,0)
 
     # Initiate camera feed (will need to be adapted for robot to keep stream alive)
-    cam = cv2.VideoCapture(0)
+    #cam = cv2.VideoCapture(0)
 
     # Initiate SURF detector with initial hessian value  (set by default or through UI)
     # Larger threshold should render fewer more salient points, smaller more but less salient points
@@ -94,8 +110,6 @@ def displayMatch(obj,alg_params):
     # Set to use 128 descriptor size
     surf.setExtended(True)
 
-    print dir(surf)
-    
     # Setting Upright flags means algorithm does not consider rotation - still good to about 15 degrees
     #surf.setUpright(True)
 
@@ -114,32 +128,38 @@ def displayMatch(obj,alg_params):
     # Initiate FLANN object with parameters
     flann = cv2.FlannBasedMatcher(index_params, search_params)
 
+    robot = py_websockets_bot.WebsocketsBot("192.168.42.1")
+    robot.start_streaming_camera_images(findMatches)
+    #robot.centre_neck()
+    robot.set_neck_angles(pan_angle_degrees=90.0, tilt_angle_degrees=70.0)
+
     # Match and display output loop
     while(True):
         try:
-            # Get camera stream frame
-            ret, img2 = cam.read()
+            robot.update()
 
-            # Convert frame to grayscale (algorithm uses pixel gray intensities)
-            gray = cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
+            if latest_camera_image != None:
+                img2 = latest_camera_image
+                # Convert frame to grayscale (algorithm uses pixel gray intensities)
+                gray = cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
 
-            # Detect and compute keypoints/descripts for stream frame
-            kp2, des2 = surf.detectAndCompute(gray,None)
+                # Detect and compute keypoints/descripts for stream frame
+                kp2, des2 = surf.detectAndCompute(gray,None)
 
-            # Calculate matches with FLANN
-            matches = flann.knnMatch(des1,des2,k=2)
+                # Calculate matches with FLANN
+                matches = flann.knnMatch(des1,des2,k=2)
 
-            img2 = matchAndBox(img1,kp1,img2,kp2,matches,alg_params)
-            #print match_feedback['left_counter']
-            #print match_feedback['right_counter']
-            #print match_feedback['last_centre']
-
-            cv2.imshow("Live Stream with Detected Objects", img2)
+                img2 = matchAndBox(img1,kp1,img2,kp2,matches,alg_params)
+                #print match_feedback['left_counter']
+                #print match_feedback['right_counter']
+                #print match_feedback['last_centre']
+                cv2.imshow("Live Stream with Detected Objects", img2) 
+                
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         except cv2.error:
+            robot.set_motor_speeds(50.0, -50.0)
             print "Please check camera feed - ensure it is not obscured"
-
-    cam.release()
+    robot.disconnect()
     cv2.destroyAllWindows()
 

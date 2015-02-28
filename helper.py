@@ -94,5 +94,8 @@ def calculateDistanceBetweenPoints(p1,p2):
 
 def calculateAreaOfTriangle(s1,s2,s3):
 	p = (s1 + s2 + s3) / 2
-	area = math.sqrt((p*(p-s1)*(p-s2)*(p-s3)))
+	try:
+		area = math.sqrt((p*(p-s1)*(p-s2)*(p-s3)))
+	except ValueError:
+		area = 0
 	return area

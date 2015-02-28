@@ -1,6 +1,7 @@
 import math
+import py_websockets_bot
 
-def robotMove(centre, height, width, move_tolerance, match_feedback):
+def robotMove(robot, centre, height, width, move_tolerance, match_feedback):
 
     # Calculate distance between current centre and last centre point using Pythagorean theory
     coord_distance = math.hypot(centre[0] - match_feedback['last_centre'][0], centre[1] - match_feedback['last_centre'][1])
@@ -26,6 +27,7 @@ def robotMove(centre, height, width, move_tolerance, match_feedback):
         elif centre[1] > (height / 5 * 4):
             print "Look down"
         else:
+            robot.set_motor_speeds(30.0, 30.0)
             print "Move Forward"
     else:
         print "Distance too great"
