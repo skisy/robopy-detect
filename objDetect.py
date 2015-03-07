@@ -4,8 +4,10 @@ import helper as h
 import cv2
 import robotControl as rc
 from cv2 import xfeatures2d as xf
-from matplotlib import pyplot as plt
+#rom matplotlib import pyplot as plt
 import py_websockets_bot
+import py_websockets_bot.mini_driver
+import py_websockets_bot.robot_config
 
 MOVE_TOLERANCE = 100
 neck_angles = dict([('tilt',70),('pan',90)])
@@ -64,8 +66,8 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             area_percent = area / (feed_width * feed_height) * 100
             
             # Change to use object distance (with ultrasonic range finder)
-            if area_percent > 50:
-                print "Object Found"
+            if area_percent > 40:
+               #print "Object Found"
                 robot.set_motor_speeds(0.0,0.0)
 
             #print str(area) + "/" + str(feed_width * feed_height)
@@ -75,6 +77,7 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             obj_centre = (sum(x) / len(x), sum(y) / len(y))
             img2 = cv2.circle(img2, obj_centre,5, (0,0,255))
 
+            # Move robot and keep track of current state
             match_feedback, neck_angles = rc.robotMove(robot, obj_centre, feed_height, feed_width, MOVE_TOLERANCE, match_feedback, neck_angles)
 
         except AttributeError:
@@ -134,9 +137,20 @@ def setupMatch(obj,alg_params):
     # Initiate FLANN object with parameters
     flann = cv2.FlannBasedMatcher(index_params, search_params)
 
+    # Establish connection to robot via Websockets
     robot = py_websockets_bot.WebsocketsBot("192.168.42.1")
+
+    # Create mini driver sensor configuration
+    # Used to configure the inputs on the mini driver board
+    sensorConfig = py_websockets_bot.mini_driver.SensorConfiguration(
+        configD12 = py_websockets_bot.mini_driver.PIN_FUNC_ULTRASONIC_READ)
+
+    robot_config = robot.get_robot_config()
+    robot_config.miniDriverSensorConfiguration = sensorConfig
+    robot.set_robot_config(robot_config)
     robot.start_streaming_camera_images(getLastImage)
-    #robot.centre_neck()
+
+    # Sets neck degrees to initial values (should centre neck if servos configured correctly)
     robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
     feed_error = 0
 
