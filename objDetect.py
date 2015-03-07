@@ -12,7 +12,7 @@ neck_angles = dict([('tilt',70),('pan',90)])
 latest_camera_image = None
 robot = None
 
-def findMatches(image, image_time):
+def getLastImage(image, image_time):
     global latest_camera_image
 
     latest_camera_image = image
@@ -135,7 +135,7 @@ def setupMatch(obj,alg_params):
     flann = cv2.FlannBasedMatcher(index_params, search_params)
 
     robot = py_websockets_bot.WebsocketsBot("192.168.42.1")
-    robot.start_streaming_camera_images(findMatches)
+    robot.start_streaming_camera_images(getLastImage)
     #robot.centre_neck()
     robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
     feed_error = 0

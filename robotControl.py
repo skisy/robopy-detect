@@ -32,10 +32,10 @@ def robotMove(robot, centre, height, width, move_tolerance, match_feedback, neck
         elif centre[1] > (height / 5 * 4):
             if (neck_angles['tilt']) > 20:
                 neck_angles['tilt'] -= 1
-            robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
+            # Tilt servo currently broken, command disabled
+            #robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
             print "Look down"
         else:
-
             robot.set_motor_speeds(20.0, 20.0)
             print "Move Forward"
     else:
