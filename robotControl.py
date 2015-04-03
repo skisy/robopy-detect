@@ -44,19 +44,19 @@ def robotMove(robot, centre, height, width, move_tolerance, match_feedback, neck
             print "Turn Right"
             time.sleep(0.5)
         elif centre[1] < (height / 5):
-            if (neck_angles['tilt'] + 1) < 160:
-                neck_angles['tilt'] += 1
-
+            if (neck_angles['tilt'] - 1) > 20:
+                neck_angles['tilt'] -= 1
+            #print "CURRENT ANGLE UP: ", neck_angles['tilt']
             robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
             print "Look up"
         elif centre[1] > (height / 5 * 4):
-            if (neck_angles['tilt']) > 20:
-                neck_angles['tilt'] -= 1
-            # Tilt servo currently broken, command disabled
-            #robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
+            if (neck_angles['tilt'] + 1) < 175:
+                neck_angles['tilt'] += 1
+            #print "CURRENT ANGLE DOWN:", neck_angles['tilt']
+            robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
             print "Look down"
         elif object_found != True:
-            robot.set_motor_speeds(20.0, 20.0)
+            robot.set_motor_speeds(15.0, 15.0)
             print "Move Forward"  
     else:
         print "Distance too great"

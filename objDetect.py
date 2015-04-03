@@ -8,9 +8,10 @@ from cv2 import xfeatures2d as xf
 import py_websockets_bot
 import py_websockets_bot.mini_driver
 import py_websockets_bot.robot_config
+import time
 
 MOVE_TOLERANCE = 100
-neck_angles = dict([('tilt',70),('pan',90)])
+neck_angles = dict([('tilt',150),('pan',100)])
 latest_camera_image = None
 robot = None
 
@@ -82,14 +83,17 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
         except AttributeError:
             print "Empty Mask"
+            robot.set_motor_speeds(20.0,-20.0)
     else:
         print "Not enough matches found"
         #print match_feedback['no_match']
         if (match_feedback['no_match'] > 20):
-            neck_angles['tilt'] = 70
+            neck_angles['tilt'] = 150
             robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
             match_feedback['no_match'] = 0
             robot.set_motor_speeds(20.0, -20.0)
+            #time.sleep(0.8)
+            #robot.set_motor_speeds(0,0)
         match_feedback['no_match'] += 1
         maskList = None
 
