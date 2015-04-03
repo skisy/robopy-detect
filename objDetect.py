@@ -154,7 +154,7 @@ def setupMatch(obj,alg_params):
     robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
     feed_error = 0
 
-    # Match and display output loop
+    # Main loop processes current frame and matches features from original image
     while(True):
         try:
             robot.update()
@@ -167,13 +167,16 @@ def setupMatch(obj,alg_params):
                 # Detect and compute keypoints/descripts for stream frame
                 kp2, des2 = surf.detectAndCompute(gray,None)
 
-                # Calculate matches with FLANN
+                # Calculate descriptor matches with FLANN
                 matches = flann.knnMatch(des1,des2,k=2)
 
+                # Send keypoints/matching descriptors to find location of object in image and return image with bounding box around image
                 img2 = matchAndBox(img1,kp1,img2,kp2,matches,alg_params)
                 #print match_feedback['left_counter']
                 #print match_feedback['right_counter']
                 #print match_feedback['last_centre']
+
+                # Display frame
                 cv2.imshow("Live Stream with Detected Objects", img2)
                 feed_error = 0 
                 
