@@ -37,20 +37,22 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
         match_feedback['no_match'] = 0
         # Catch frame errors
         try:
-            source_pts = np.float32([ kp1[m.queryIdx].pt for m in good_matches ]).reshape(-1,1,2)
-            dest_pts = np.float32([ kp2[m.trainIdx].pt for m in good_matches ]).reshape(-1,1,2)
+            # Get keypoints of matching descriptors from both images
+            source_points = np.float32([ kp1[m.queryIdx].pt for m in good_matches ]).reshape(-1,1,2)
+            dest_points = np.float32([ kp2[m.trainIdx].pt for m in good_matches ]).reshape(-1,1,2)
 
-            M, mask = cv2.findHomography(source_pts, dest_pts, cv2.RANSAC, 5.0)
-            maskList = mask.ravel().tolist()
+            # Find homography matrix between two images (estimaate transformation of keypoints between image planes)
+            hom_matrix, mask = cv2.findHomography(source_points, dest_points, cv2.RANSAC, 5.0)
+            #maskList = mask.ravel().tolist()
 
             # Get dimensions of train image
             height, width = img1.shape
 
-            # Get points from train image and apply transform to fit mask (based on located keypoints in frame)
             points = np.float32([ [0,0],[0,height-1],[width-1,height-1],[width-1,0] ]).reshape(-1,1,2)
-            dest = cv2.perspectiveTransform(points, M)
+            # Map keypoints by applying perspective transformation to matrix
+            dest = cv2.perspectiveTransform(points, hom_matrix)
 
-            # Draw box around object in image
+            # Draw box around object in image using homography matrix with perspective tranformation applied
             img2 = cv2.polylines(img2, [np.int32(dest)], True, 255, 3, cv2.LINE_AA)
             feed_height, feed_width, channels = img2.shape
 
@@ -59,17 +61,20 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             p3 = dest[2][0]
             p4 = dest[3][0]
 
-            # Corner points of mask applied to frame image
+            # Get corner points of box around object in frame
             x = [ np.int32(p1[0]), np.int32(p2[0]), np.int32(p3[0]), np.int32(p4[0])]
             y = [ np.int32(p1[1]), np.int32(p2[1]), np.int32(p3[1]), np.int32(p4[1])]
 
-            area = h.calculateFourSidedPolyArea(p1,p2,p3,p4)
-            area_percent = area / (feed_width * feed_height) * 100
+            ## Area was initially used to attempt to determine whether the robot was close enough to stop looking
+            ## May still be of some use as descriptor matching is less likely to work effectively if object takes up
+            ## more than 100% of the image
+            #area = h.calculateFourSidedPolyArea(p1,p2,p3,p4)
+            #area_percent = area / (feed_width * feed_height) * 100
             
             # Change to use object distance (with ultrasonic range finder)
-            if area_percent > 40:
-               #print "Object Found"
-                robot.set_motor_speeds(0.0,0.0)
+            #if area_percent > 40:
+                #print "Object Found"
+                #robot.set_motor_speeds(0.0,0.0)
 
             #print str(area) + "/" + str(feed_width * feed_height)
             #print area_percent
@@ -95,7 +100,7 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             #time.sleep(0.8)
             #robot.set_motor_speeds(0,0)
         match_feedback['no_match'] += 1
-        maskList = None
+        #maskList = None
 
     return img2
 
