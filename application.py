@@ -215,18 +215,11 @@ class AddObjDialog():
 		obj.append(self.name.get())
 		obj.append(self.filename)
 		path, ext = osp.splitext(self.filepath)
-		temp_path = path + ".temp" + ext
-
 		try:
-			shutil.copyfile(self.filepath, temp_path)
-
-			h.cropImage(temp_path)
-
 			new_path = "trainImg/" + self.filename
-			
 			if not(osp.isfile(new_path)):
-				shutil.copyfile(temp_path,new_path)
-			os.remove(temp_path)	
+				shutil.copyfile(self.filepath, new_path)
+			h.cropImage(new_path)
 
 			self.settings.objects.append(obj)
 			self.settings.master.focus_force()

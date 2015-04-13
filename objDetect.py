@@ -34,6 +34,7 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
     # Only draw box if number of matches is greater than the set minimum (avoids excessive false alarms)
     if len(good_matches) > alg_params['min_match_num']:
+        # Neccessary to count number of frames without matches in order to allow robot to know when to search elsewhere
         match_feedback['no_match'] = 0
         # Catch frame errors
         try:
@@ -54,6 +55,8 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
             # Draw box around object in image using homography matrix with perspective tranformation applied
             img2 = cv2.polylines(img2, [np.int32(dest)], True, 255, 3, cv2.LINE_AA)
+
+            # Get dimensions of query frame
             feed_height, feed_width, channels = img2.shape
 
             p1 = dest[0][0]
@@ -171,10 +174,10 @@ def setupMatch(obj,alg_params):
             if latest_camera_image != None:
                 img2 = latest_camera_image
                 # Convert frame to grayscale (algorithm uses pixel gray intensities)
-                gray = cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
+                grey = cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
 
                 # Detect and compute keypoints/descripts for stream frame
-                kp2, des2 = surf.detectAndCompute(gray,None)
+                kp2, des2 = surf.detectAndCompute(grey,None)
 
                 # Calculate descriptor matches with FLANN
                 matches = flann.knnMatch(des1,des2,k=2)
