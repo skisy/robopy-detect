@@ -94,12 +94,18 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             robot.set_motor_speeds(20.0,-20.0)
     else:
         print "Not enough matches found"
+
         #print match_feedback['no_match']
         if (match_feedback['no_match'] > 20):
             neck_angles['tilt'] = 150
             robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
             match_feedback['no_match'] = 0
-            robot.set_motor_speeds(20.0, -20.0)
+
+            if not rc.minDistanceReached(robot, 25):
+                robot.set_motor_speeds(35.0, 35.0)
+            else:
+                robot.set_motor_speeds(25.0, -25.0)
+
             #time.sleep(0.8)
             #robot.set_motor_speeds(0,0)
         match_feedback['no_match'] += 1
@@ -108,7 +114,6 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
     return img2
 
 def setupMatch(obj,alg_params):
-
     global match_feedback
     global neck_angles
     global robot
@@ -154,8 +159,7 @@ def setupMatch(obj,alg_params):
 
     # Create mini driver sensor configuration
     # Used to configure the inputs on the mini driver board
-    sensorConfig = py_websockets_bot.mini_driver.SensorConfiguration(
-        configD12 = py_websockets_bot.mini_driver.PIN_FUNC_ULTRASONIC_READ)
+    sensorConfig = py_websockets_bot.mini_driver.SensorConfiguration(configD12 = py_websockets_bot.mini_driver.PIN_FUNC_ULTRASONIC_READ)
 
     robot_config = robot.get_robot_config()
     robot_config.miniDriverSensorConfiguration = sensorConfig
@@ -173,6 +177,7 @@ def setupMatch(obj,alg_params):
 
             if latest_camera_image != None:
                 img2 = latest_camera_image
+
                 # Convert frame to grayscale (algorithm uses pixel gray intensities)
                 grey = cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
 

@@ -18,8 +18,7 @@ def writeFile(filepath, content):
     	for obj in content:
     		writer.writerow(obj)
 
-def cropImage(image_path):
-	img = cv2.imread(image_path)
+def cropImage(img):
 	title = "Crop Image"
 
 	global cursor_pos
@@ -67,7 +66,7 @@ def cropImage(image_path):
 
 	(width, height) = np.subtract(bottom_right,top_left)
 	cropped = img[top_left[1]:top_left[1]+height,top_left[0]:top_left[0]+width]
-	cv2.imwrite(image_path,cropped)
+	return cropped
 
 def calculateFourSidedPolyArea(p1, p2, p3, p4):
 	d1to2 = calculateDistanceBetweenPoints(p1,p2)
