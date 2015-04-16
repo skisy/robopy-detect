@@ -59,7 +59,7 @@ class MainApp():
         try:
             obj_index = self.select_li.curselection()[0]
             objects = h.processFile('objects.csv')
-            objDetect.setupMatch(objects[obj_index][1],alg_params)
+            objDetect.setupMatch(objects[obj_index][0],objects[obj_index][1],alg_params)
         except IndexError:
             tkMessageBox.showinfo("Oops","Please select an object from the list to locate")
             self.master.config(cursor="")

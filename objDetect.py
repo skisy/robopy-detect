@@ -11,7 +11,7 @@ import py_websockets_bot.robot_config
 import time
 
 MOVE_TOLERANCE = 100
-neck_angles = dict([('tilt',150),('pan',100)])
+neck_angles = dict([('tilt',135),('pan',100)])
 latest_camera_image = None
 robot = None
 
@@ -43,7 +43,7 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             dest_points = np.float32([ kp2[m.trainIdx].pt for m in good_matches ]).reshape(-1,1,2)
 
             # Find homography matrix between two images (estimaate transformation of keypoints between image planes)
-            hom_matrix, mask = cv2.findHomography(source_points, dest_points, cv2.RANSAC, 5.0)
+            hom_matrix, mask = cv2.findHomography(source_points, dest_points, cv2.RANSAC, 3)
             #maskList = mask.ravel().tolist()
 
             # Get dimensions of train image
@@ -87,41 +87,40 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
             img2 = cv2.circle(img2, obj_centre,5, (0,0,255))
 
             # Move robot and keep track of current state
-            match_feedback, neck_angles = rc.robotMove(robot, obj_centre, feed_height, feed_width, MOVE_TOLERANCE, match_feedback, neck_angles)
+            match_feedback, neck_angles = rc.robotMoveToObject(robot, obj_centre, feed_height, feed_width, MOVE_TOLERANCE, match_feedback, neck_angles)
 
         except AttributeError:
             print "Empty Mask"
-            robot.set_motor_speeds(20.0,-20.0)
+            neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)          
     else:
         print "Not enough matches found"
-
-        #print match_feedback['no_match']
+        print match_feedback['no_match']
         if (match_feedback['no_match'] > 20):
-            neck_angles['tilt'] = 150
+            neck_angles['tilt'] = 135
             robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
             match_feedback['no_match'] = 0
 
-            if not rc.minDistanceReached(robot, 25):
-                robot.set_motor_speeds(35.0, 35.0)
+            if not rc.minDistanceReached(robot, 30):
+                neck_angles['pan'] = 100
+                robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'],tilt_angle_degrees=neck_angles['tilt'])
+                robot.set_motor_speeds(45.0, 45.0)
             else:
-                robot.set_motor_speeds(25.0, -25.0)
-
-            #time.sleep(0.8)
-            #robot.set_motor_speeds(0,0)
+                print "OBSTACLE"
+                neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
         match_feedback['no_match'] += 1
         #maskList = None
 
     return img2
 
-def setupMatch(obj,alg_params):
+def setupMatch(obj_name,obj_path,alg_params):
     global match_feedback
     global neck_angles
     global robot
 
-    match_feedback = dict([('left_counter',0), ('right_counter',0), ('loc_counter',0), ('last_centre',(0,0)), ('no_match',0)])
+    match_feedback = dict([('left_counter',0), ('right_counter',0), ('loc_counter',0), ('last_centre',(0,0)), ('no_match',0), ('object_located',False), ('error',0),('last_turn',"Right")])
 
     # Path to object image
-    path = 'trainImg/' + obj
+    path = 'trainImg/' + obj_path
 
     # Load training image as grayscale
     img1 = cv2.imread(path,0)
@@ -168,7 +167,6 @@ def setupMatch(obj,alg_params):
 
     # Sets neck degrees to initial values (should centre neck if servos configured correctly)
     robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
-    feed_error = 0
 
     # Main loop processes current frame and matches features from original image
     while(True):
@@ -192,18 +190,17 @@ def setupMatch(obj,alg_params):
                 #print match_feedback['left_counter']
                 #print match_feedback['right_counter']
                 #print match_feedback['last_centre']
-
+                title = "Detecting: " + obj_name
                 # Display frame
-                cv2.imshow("Live Stream with Detected Objects", img2)
-                feed_error = 0 
+                cv2.imshow(title, img2)
                 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         except cv2.error:
-            if feed_error > 5:
-                robot.set_motor_speeds(20.0, -20.0)
-            feed_error += 1
-            match_feedback['no_match'] = 0            
+            if match_feedback['error'] > 30:
+                neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
+                match_feedback['error'] = 0
+            match_feedback['error'] += 1            
             print "Please check camera feed - ensure it is not obscured"
     robot.disconnect()
     cv2.destroyAllWindows()
