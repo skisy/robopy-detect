@@ -25,19 +25,17 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
     global match_feedback
     global neck_angles
     global robot
+    try:
+        # Filter matches by distance to keep only "good" matches
+        good_matches = []
+        for m,n in matches:
+            if m.distance < alg_params['good_distance'] * n.distance:
+                good_matches.append(m)
 
-    # Filter matches to keep only "good" matches
-    good_matches = []
-    for m,n in matches:
-        if m.distance < alg_params['good_distance'] * n.distance:
-            good_matches.append(m)
-
-    # Only draw box if number of matches is greater than the set minimum (avoids excessive false alarms)
-    if len(good_matches) > alg_params['min_match_num']:
-        # Neccessary to count number of frames without matches in order to allow robot to know when to search elsewhere
-        match_feedback['no_match'] = 0
-        # Catch frame errors
-        try:
+        # Only draw box if number of matches is greater than the set minimum (avoids excessive false alarms)
+        if len(good_matches) > alg_params['min_match_num']:
+            # Neccessary to count number of frames without matches in order to allow robot to know when to search elsewhere
+            match_feedback['no_match'] = 0
             # Get keypoints of matching descriptors from both images
             source_points = np.float32([ kp1[m.queryIdx].pt for m in good_matches ]).reshape(-1,1,2)
             dest_points = np.float32([ kp2[m.trainIdx].pt for m in good_matches ]).reshape(-1,1,2)
@@ -88,27 +86,32 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
             # Move robot and keep track of current state
             match_feedback, neck_angles = rc.robotMoveToObject(robot, obj_centre, feed_height, feed_width, MOVE_TOLERANCE, match_feedback, neck_angles)
+    
+        else:
+            print "Not enough matches found"
+            print match_feedback['no_match']
+            if (match_feedback['no_match'] > 20):
+                neck_angles['tilt'] = 135
+                robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
+                match_feedback['no_match'] = 0
 
-        except AttributeError:
-            print "Empty Mask"
-            neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)          
-    else:
-        print "Not enough matches found"
-        print match_feedback['no_match']
-        if (match_feedback['no_match'] > 20):
-            neck_angles['tilt'] = 135
-            robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
-            match_feedback['no_match'] = 0
+                if (rc.minDistanceReached(robot, 25)):
+                    print "distance reached"
+                    neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
+                else:
+                    print "distance not reached"
+                    neck_angles['pan'] = 100
+                    robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'],tilt_angle_degrees=neck_angles['tilt'])
+                    robot.set_motor_speeds(45.0, 45.0)
+                    #print "OBSTACLE"
+            match_feedback['no_match'] += 1
+            #maskList = None
+    except AttributeError:
+        print "Empty Mask"
+        neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)      
+    except ValueError:
+        print "Nothing to match"
 
-            if not rc.minDistanceReached(robot, 30):
-                neck_angles['pan'] = 100
-                robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'],tilt_angle_degrees=neck_angles['tilt'])
-                robot.set_motor_speeds(45.0, 45.0)
-            else:
-                print "OBSTACLE"
-                neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
-        match_feedback['no_match'] += 1
-        #maskList = None
 
     return img2
 
@@ -117,7 +120,7 @@ def setupMatch(obj_name,obj_path,alg_params):
     global neck_angles
     global robot
 
-    match_feedback = dict([('left_counter',0), ('right_counter',0), ('loc_counter',0), ('last_centre',(0,0)), ('no_match',0), ('object_located',False), ('error',0),('last_turn',"Right")])
+    match_feedback = dict([('left_counter',0), ('right_counter',0), ('loc_counter',0), ('last_centre',(0,0)), ('no_match',0), ('object_located',False), ('error',0),('last_turn',"Right"), ('no_desc',0)])
 
     # Path to object image
     path = 'trainImg/' + obj_path
@@ -132,8 +135,8 @@ def setupMatch(obj_name,obj_path,alg_params):
     # Larger threshold should render fewer more salient points, smaller more but less salient points
     surf = xf.SURF_create(alg_params['hes_threshold'])
 
-    # Set to use 128 descriptor size
-    surf.setExtended(True)
+    # Set to use 128 descriptor size - not used with KD-tree ANN matching as it is known to give poor performance for high dimensionality descriptors
+    #surf.setExtended(True)
 
     # Setting Upright flags means algorithm does not consider rotation - still good to about 15 degrees
     #surf.setUpright(True)
@@ -142,10 +145,8 @@ def setupMatch(obj_name,obj_path,alg_params):
     kp1, des1 = surf.detectAndCompute(img1,None)
 
     # Set up parameters for FLANN matching
-    FLANN_INDEX_KDTREE = 0
-
     # Tell FLANN matcher to use k-dimensional index trees (8) - trees are randomised and searched in parallel
-    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 8)
+    index_params = dict(algorithm = 0, trees = 8)
 
     # Specify number of times to recursively traverse index trees
     search_params = dict(checks = 100)
@@ -182,14 +183,21 @@ def setupMatch(obj_name,obj_path,alg_params):
                 # Detect and compute keypoints/descripts for stream frame
                 kp2, des2 = surf.detectAndCompute(grey,None)
 
-                # Calculate descriptor matches with FLANN
-                matches = flann.knnMatch(des1,des2,k=2)
+                if (des2 is None) or (des2.all()):
+                    print "No descriptors to match"
+                    if match_feedback['no_desc'] > 20:
+                        neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
+                        match_feedback['no_desc'] = 0
+                    match_feedback['no_desc'] += 1
+                else:
+                    # Calculate descriptor matches with FLANN
+                    matches = flann.knnMatch(des1,des2,k=2)
 
-                # Send keypoints/matching descriptors to find location of object in image and return image with bounding box around image
-                img2 = matchAndBox(img1,kp1,img2,kp2,matches,alg_params)
-                #print match_feedback['left_counter']
-                #print match_feedback['right_counter']
-                #print match_feedback['last_centre']
+                    # Send keypoints/matching descriptors to find location of object in image and return image with bounding box around image
+                    img2 = matchAndBox(img1,kp1,img2,kp2,matches,alg_params)
+                    #print match_feedback['left_counter']
+                    #print match_feedback['right_counter']
+                    #print match_feedback['last_centre']
                 title = "Detecting: " + obj_name
                 # Display frame
                 cv2.imshow(title, img2)
@@ -197,11 +205,12 @@ def setupMatch(obj_name,obj_path,alg_params):
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         except cv2.error:
-            if match_feedback['error'] > 30:
+            if match_feedback['error'] > 20:
+                #robot.set_motor_speeds(35.0,-30.0)
                 neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
                 match_feedback['error'] = 0
             match_feedback['error'] += 1            
-            print "Please check camera feed - ensure it is not obscured"
+            #print "Please check camera feed - ensure it is not obscured"
     robot.disconnect()
     cv2.destroyAllWindows()
 

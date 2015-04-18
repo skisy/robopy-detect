@@ -73,13 +73,13 @@ if __name__ == "__main__":
     cam = cv2.VideoCapture(0)
 
     # Initiate SURF detector with initial hessian threshold value 
-    surf = xf.SURF_create(100)
+    surf = xf.SURF_create(500)
 
     # Detect keypoints and compute descriptors from train image using SURF algorithm
     orig_kp, orig_des = surf.detectAndCompute(trainImg,None)
 
     # Set up parameters for FLANN matching
-    index_params = dict(algorithm = 0, trees = 5)   # Algorithm selection = Index K-D Tree
+    index_params = dict(algorithm = 0, trees = 8)   # Algorithm selection = Index K-D Tree
     # Specify number of times to recursively traverse index trees - higher = more accurate but slower
     search_params = dict(checks = 70)   
 
@@ -87,6 +87,7 @@ if __name__ == "__main__":
     flann = cv2.FlannBasedMatcher(index_params, search_params)
     frames = 0
     initiate = False
+    total_duration = 0
     # Match and display output loop
     while(True):
         # Get camera stream frame
@@ -97,9 +98,12 @@ if __name__ == "__main__":
 
         # Detect and compute keypoints/descripts for stream frame
         query_kp, query_des = surf.detectAndCompute(grey,None)
-
+        start = time.time()
         # Calculate matches with FLANN
         matches = flann.knnMatch(orig_des,query_des,k=2)
+        end = time.time()
+        duration = end - start
+        total_duration += duration
 
         queryImg = matchAndBox(trainImg,orig_kp,queryImg,query_kp,matches)
         cv2.imshow("Live Stream with Detected Objects", queryImg)
@@ -115,3 +119,5 @@ if __name__ == "__main__":
 
     cam.release()
     cv2.destroyAllWindows()
+    average_duration = total_duration / frames
+    print average_duration
