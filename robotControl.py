@@ -65,11 +65,11 @@ def robotMoveToObject(robot, centre, height, width, move_tolerance, match_feedba
     elif neck_angles['pan'] < 90:
         neck_angles['pan'] += 20
         robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
-        robot.set_motor_speeds(30.0, -30.0)
+        robot.set_motor_speeds(35.0, -35.0)
     elif neck_angles['pan'] > 110:
         neck_angles['pan'] -= 20
         robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
-        robot.set_motor_speeds(-30.0, 30.0)
+        robot.set_motor_speeds(-3.0, 35.0)
 
     return match_feedback, neck_angles
 

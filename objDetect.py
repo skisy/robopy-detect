@@ -86,6 +86,9 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
 
             # Move robot and keep track of current state
             match_feedback, neck_angles = rc.robotMoveToObject(robot, obj_centre, feed_height, feed_width, MOVE_TOLERANCE, match_feedback, neck_angles)
+            match_feedback['error'] = 0
+            match_feedback['no_match'] = 0
+            match_feedback['no_desc'] = 0
     
         else:
             print "Not enough matches found"
@@ -94,6 +97,8 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
                 neck_angles['tilt'] = 135
                 robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
                 match_feedback['no_match'] = 0
+                match_feedback['no_desc'] = 0
+                match_feedback['error'] = 0
 
                 if (rc.minDistanceReached(robot, 25)):
                     print "distance reached"
@@ -185,7 +190,7 @@ def setupMatch(obj_name,obj_path,alg_params):
 
                 if (des2 is None) or (des2.all()):
                     print "No descriptors to match"
-                    if match_feedback['no_desc'] > 20:
+                    if match_feedback['no_desc'] > 30:
                         neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
                         match_feedback['no_desc'] = 0
                     match_feedback['no_desc'] += 1
@@ -210,7 +215,7 @@ def setupMatch(obj_name,obj_path,alg_params):
                 neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
                 match_feedback['error'] = 0
             elif match_feedback['error'] > 30:
-                robot.set_motor_speeds(-40.0,-40.0)
+                robot.set_motor_speeds(-35.0,-35.0)
                 match_feedback['error'] = 0
             match_feedback['error'] += 1            
             #print "Please check camera feed - ensure it is not obscured"
