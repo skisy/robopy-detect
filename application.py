@@ -10,6 +10,7 @@ import os
 import objDetect
 import socket
 import py_websockets_bot
+import re
 
 def setListboxItems(objects, listbox):
     listbox.delete(0,END)
@@ -155,16 +156,12 @@ class SettingsDialog():
         self.save_btn.grid(row=6, column=4,sticky="e",pady=(40,0))
 
     def _close(self):
-        self.objects = self.main.getObjects()
         self.master.destroy()
 
     def _saveSettings(self):
         self.main.setHessian(self.hessian_scale.get())
         self.main.setMinMatch(self.min_match_scale.get())
         self.main.setDistance(self.good_dist_scale.get())
-        self.main.setObjects(list(self.objects))
-        setListboxItems(self.main.getObjects(),self.main.select_li)
-        h.writeFile('objects.csv',self.objects)
         #print self.main.getDistance()
         #print self.main.getMinMatch()
         #print self.main.getHessian()
@@ -172,19 +169,19 @@ class SettingsDialog():
 
     def _openAddObjFile(self):
         add_objects = Toplevel(self.master)
-        add_gui = AddObjFileDialog(add_objects,self)
+        add_gui = AddObjFileDialog(add_objects,self, self.main)
 
     def _openAddObjCam(self):
         add_objects = Toplevel(self.master)
-        add_gui = AddObjWebcamDialog(add_objects,self)
+        add_gui = AddObjWebcamDialog(add_objects,self, self.main)
 
     def _openAddObjBot(self):
         add_objects = Toplevel(self.master)
-        add_gui = AddObjRobotDialog(add_objects,self)
+        add_gui = AddObjRobotDialog(add_objects,self, self.main)
 
     def _openRemoveObj(self):
         remove_objects = Toplevel(self.master)
-        rem_gui = RemoveObjDialog(remove_objects,self)
+        rem_gui = RemoveObjDialog(remove_objects,self, self.main)
 
     def setObjects(self, objects):
         self.objects = objects
@@ -192,8 +189,9 @@ class SettingsDialog():
     def getObjects(self):
         return list(self.objects)
 
+
 class ObjFromStreamDialog(object):
-    def __init__(self,master,settings,title):
+    def __init__(self,master,settings,title,main):
         self.master = master;
         self.master.title(title)
         self.master.geometry("405x180") 
@@ -201,6 +199,7 @@ class ObjFromStreamDialog(object):
         master.focus_force()
 
         self.settings = settings
+        self.main = main
 
         self.frame = None
 
@@ -233,19 +232,29 @@ class ObjFromStreamDialog(object):
         self.settings.master.focus_force()
 
     def _saveObjAdd(self):
-        filename = self.name.get() + ".jpg"
-        filepath = "trainImg/" + filename
-        obj = []
-        obj.append(self.name.get())
-        obj.append(filename)
-        cv2.imwrite(filepath, self.frame)
-        self.settings.objects.append(obj)
-        self.settings.master.focus_force()
-        self.master.destroy()
+        if self.name.get() == "":
+            tkMessageBox.showinfo("No Name", "Please give the object a name")
+        elif self.frame == None:
+            tkMessageBox.showinfo("No Image","Capture and crop object image by clicking 'Start Capture'")
+        else:
+            name = re.sub("((?=[^s\.])\W)","",self.name.get())
+            filename = name + ".jpg"
+            filepath = "trainImg/" + filename
+            obj = []
+            obj.append(name)
+            obj.append(filename)
+            cv2.imwrite(filepath, self.frame)
+            self.settings.objects.append(obj)
+            h.writeFile('objects.csv',self.settings.objects)
+            self.main.setObjects(list(self.settings.objects))
+            setListboxItems(self.main.getObjects(),self.main.select_li)
+            self.settings.master.focus_force()
+            self.master.destroy()
+
 
 class AddObjWebcamDialog(ObjFromStreamDialog):
-    def __init__(self,master,settings):
-        ObjFromStreamDialog.__init__(self,master,settings, "Add Object From Webcam")
+    def __init__(self,master,settings,main):
+        ObjFromStreamDialog.__init__(self,master,settings, "Add Object From Webcam", main)
 
     def _startCapture(self):
         tkMessageBox.showinfo("Control","Select Frame: Spacebar\nCrop: Click top left and bottom right points around object\nQuit: Q")
@@ -270,7 +279,7 @@ class AddObjWebcamDialog(ObjFromStreamDialog):
         self.master.focus_force()
 
 class AddObjRobotDialog(ObjFromStreamDialog):
-    def __init__(self,master,settings):
+    def __init__(self,master,settings,main):
         ObjFromStreamDialog.__init__(self,master,settings,"Add Object From Robot")
 
     def _startCapture(self):
@@ -308,7 +317,7 @@ class AddObjRobotDialog(ObjFromStreamDialog):
 
 class AddObjFileDialog():
     
-    def __init__(self,master,settings):
+    def __init__(self,master,settings,main):
         self.master = master;
         self.master.title("Add Object From File")
         self.master.geometry("405x170") 
@@ -316,6 +325,7 @@ class AddObjFileDialog():
         master.focus_force()
 
         self.settings = settings
+        self.main = main
 
         self.filepath = ""
         self.filename = ""
@@ -350,26 +360,33 @@ class AddObjFileDialog():
         self.master.destroy()
 
     def _saveObjAdd(self):
-        obj = []
-        obj.append(self.name.get())
-        obj.append(self.filename)
-        path, ext = osp.splitext(self.filepath)
-        try:
-            new_path = "trainImg/" + self.filename
-            if not(osp.isfile(new_path)):
-                shutil.copyfile(self.filepath, new_path)
-            img = cv2.imread(new_path)
-            cropped = h.cropImage(img)
-            cv2.imwrite(new_path,cropped)
-
-            self.settings.objects.append(obj)
-            self.settings.master.focus_force()
-            self.master.destroy()
-        except shutil.Error:
-            tkMessageBox.showinfo("Copy Error","Please check the filepath is valid")
+        if self.filename.endswith(".jpg") or self.filename.endswith(".jpeg") or self.filename.endswith(".png"):
+            name = re.sub("((?=[^s\.])\W)","",self.name.get())
+            filename = name + ".jpg"
+            obj = []
+            obj.append(name)
+            obj.append(self.filename)
+            path, ext = osp.splitext(self.filepath)
+            try:
+                new_path = "trainImg/" + self.filename
+                if not(osp.isfile(new_path)):
+                    shutil.copyfile(self.filepath, new_path)
+                img = cv2.imread(new_path)
+                cropped = h.cropImage(img)
+                cv2.imwrite(new_path,cropped)
+                self.settings.objects.append(obj)
+                h.writeFile('objects.csv',self.settings.objects)
+                self.main.setObjects(list(self.settings.objects))
+                setListboxItems(self.main.getObjects(),self.main.select_li)
+                self.settings.master.focus_force()
+                self.master.destroy()
+            except shutil.Error:
+                tkMessageBox.showinfo("Copy Error","Please check the filepath is valid")
+        else:
+            tkMessageBox.showinfo("File Type Error","Please select a JPG or PNG")
 
     def _locateObjImg(self):
-        filepath = tkFileDialog.askopenfilename()
+        filepath = tkFileDialog.askopenfilename().lower
         if filepath:
             self.path.insert(0,filepath)
             self.filepath = filepath
@@ -382,7 +399,7 @@ class AddObjFileDialog():
 
 class RemoveObjDialog():
     
-    def __init__(self,master,settings):
+    def __init__(self,master,settings,main):
         self.master = master;
         self.master.title("Remove Object")
         self.master.geometry("198x390")
@@ -390,6 +407,7 @@ class RemoveObjDialog():
         master.focus_force()
 
         self.settings = settings
+        self.main = main
         self.objects = settings.getObjects()
 
         self.search_lbl = Label(self.master, text="Select object to remove")
@@ -414,12 +432,14 @@ class RemoveObjDialog():
             self.objects.pop(obj_index)
             setListboxItems(self.objects,self.remove_li)
         except IndexError:
-            tkMessageBox.showinfo("Oops","Please select an object from the list to locate")
+            tkMessageBox.showinfo("Oops","Please select an object from the list to remove")
             self.master.focus_force()
 
     def _close(self):
         self.settings.setObjects(list(self.objects))
         self.objects = self.settings.getObjects()
+        self.main.setObjects(list(self.settings.objects))
+        setListboxItems(self.main.getObjects(),self.main.select_li)
         self.master.destroy()
 
 def main():
