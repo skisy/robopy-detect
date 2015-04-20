@@ -209,8 +209,8 @@ def setupMatch(obj_name,obj_path,alg_params):
                 #robot.set_motor_speeds(35.0,-30.0)
                 neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
                 match_feedback['error'] = 0
-            elif match_feedback['error'] > 100:
-                neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
+            elif match_feedback['error'] > 30:
+                robot.set_motor_speeds(-40.0,-40.0)
                 match_feedback['error'] = 0
             match_feedback['error'] += 1            
             #print "Please check camera feed - ensure it is not obscured"
