@@ -76,36 +76,6 @@ def robotMoveToObject(robot, centre, height, width, move_tolerance, match_feedba
 def lookAround(robot, neck_angles, match_feedback):
     # Look left - if no object then look right
     # If still no object detected, look forward, drive back to avoid obstacles and turn right/left (alternating for grid)
-    '''if neck_angles['pan'] > 90 and neck_angles['pan'] < 110:
-        neck_angles['pan'] = 50
-        robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
-        match_feedback['no_match'] = 0
-    elif neck_angles['pan'] <= 90:
-        neck_angles['pan'] = 150
-        robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
-        match_feedback['no_match'] = 0
-    else:
-        neck_angles['pan'] = 100
-        robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])
-        match_feedback['no_match'] = 0
-        robot.set_motor_speeds(-90.0,-90.0)
-        time.sleep(0.8)
-        robot.set_motor_speeds(0.0,0.0)
-        if match_feedback['last_turn'] == "Left":
-            # Turn right
-            #print "RIGHT"
-            robot.set_motor_speeds(100.0,20.0)
-            time.sleep(2.8)
-            robot.set_motor_speeds(0.0,0.0)
-            match_feedback['last_turn'] = "Right"
-        else:
-            # Turn left
-            #print "LEFT"
-            robot.set_motor_speeds(20.0, 100.0)
-            time.sleep(1.8)
-            robot.set_motor_speeds(0.0,0.0)
-            match_feedback['last_turn'] = "Left"
-    return neck_angles, match_feedback'''
     if neck_angles['pan'] > 90 and neck_angles['pan'] < 110:
         neck_angles['pan'] = 50
         robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'], tilt_angle_degrees=neck_angles['tilt'])

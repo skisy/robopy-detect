@@ -205,8 +205,11 @@ def setupMatch(obj_name,obj_path,alg_params):
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         except cv2.error:
-            if match_feedback['error'] > 20:
+            if match_feedback['error'] > 20 and rc.minDistanceReached(robot, 20):
                 #robot.set_motor_speeds(35.0,-30.0)
+                neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
+                match_feedback['error'] = 0
+            elif match_feedback['error'] > 100:
                 neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
                 match_feedback['error'] = 0
             match_feedback['error'] += 1            
