@@ -20,7 +20,7 @@ def getLastImage(image, image_time):
 
     latest_camera_image = image
 
-def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
+def matchAndBox(img1,ref_kp,img2,query_kp,matches,alg_params):
 
     global match_feedback
     global neck_angles
@@ -36,9 +36,9 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
         if len(good_matches) > alg_params['min_match_num']:
             # Neccessary to count number of frames without matches in order to allow robot to know when to search elsewhere
             match_feedback['no_match'] = 0
-            # Get keypoints of matching descriptors from both images
-            source_points = np.float32([ kp1[m.queryIdx].pt for m in good_matches ]).reshape(-1,1,2)
-            dest_points = np.float32([ kp2[m.trainIdx].pt for m in good_matches ]).reshape(-1,1,2)
+            # Create NumPy arrays of keypoints with matching descriptors from both images
+            source_points = np.float32([ ref_kp[m.queryIdx].pt for match in good_matches ]).reshape(-1,1,2)
+            dest_points = np.float32([ query_kp[m.trainIdx].pt for match in good_matches ]).reshape(-1,1,2)
 
             # Find homography matrix between two images (estimaate transformation of keypoints between image planes)
             hom_matrix, mask = cv2.findHomography(source_points, dest_points, cv2.RANSAC, 3)
@@ -101,14 +101,13 @@ def matchAndBox(img1,kp1,img2,kp2,matches,alg_params):
                 match_feedback['error'] = 0
 
                 if (rc.minDistanceReached(robot, 25)):
-                    print "distance reached"
+                    #print "Distance reached"
                     neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
                 else:
-                    print "distance not reached"
+                    #print "Distance not reached"
                     neck_angles['pan'] = 100
                     robot.set_neck_angles(pan_angle_degrees=neck_angles['pan'],tilt_angle_degrees=neck_angles['tilt'])
                     robot.set_motor_speeds(45.0, 45.0)
-                    #print "OBSTACLE"
             match_feedback['no_match'] += 1
             #maskList = None
     except AttributeError:
@@ -125,7 +124,7 @@ def setupMatch(obj_name,obj_path,alg_params):
     global neck_angles
     global robot
 
-    match_feedback = dict([('left_counter',0), ('right_counter',0), ('loc_counter',0), ('last_centre',(0,0)), ('no_match',0), ('object_located',False), ('error',0),('last_turn',"Right"), ('no_desc',0)])
+    match_feedback = dict([('last_centre',(0,0)), ('no_match',0), ('object_located',False), ('error',0),('last_turn',"Right"), ('no_desc',0)])
 
     # Path to object image
     path = 'trainImg/' + obj_path
@@ -133,42 +132,46 @@ def setupMatch(obj_name,obj_path,alg_params):
     # Load training image as grayscale
     img1 = cv2.imread(path,0)
 
-    # Initiate camera feed (will need to be adapted for robot to keep stream alive)
-    #cam = cv2.VideoCapture(0)
-
     # Initiate SURF detector with initial hessian value  (set by default or through UI)
     # Larger threshold should render fewer more salient points, smaller more but less salient points
     surf = xf.SURF_create(alg_params['hes_threshold'])
 
-    # Set to use 128 descriptor size - not used with KD-tree ANN matching as it is known to give poor performance for high dimensionality descriptors
+    # Sets to use 128 descriptor size 
+    # System was tested with the 128 dimension descriptor size but no significant performance increase was noticed and therefore was disabled
+    # as KD-tree ANN matching is known to give poor performance for high dimensionality descriptors
     #surf.setExtended(True)
 
-    # Setting Upright flags means algorithm does not consider rotation - still good to about 15 degrees
+    # Setting Upright flags means algorithm does not consider rotation (U-SURF) - still good to about 15 degrees
+    # Although tested for effectiveness it was disabled as 'full' rotation invariance is required for this system
     #surf.setUpright(True)
 
     # Detect keypoints and compute descriptors using SURF algorithm
-    kp1, des1 = surf.detectAndCompute(img1,None)
+    ref_kp, ref_desc = surf.detectAndCompute(img1,None)
 
     # Set up parameters for FLANN matching
     # Tell FLANN matcher to use k-dimensional index trees (8) - trees are randomised and searched in parallel
-    index_params = dict(algorithm = 0, trees = 8)
+    idx_params = dict(algorithm = 0, trees = 8)
 
     # Specify number of times to recursively traverse index trees
     search_params = dict(checks = 100)
 
     # Initiate FLANN object with parameters
-    flann = cv2.FlannBasedMatcher(index_params, search_params)
+    flann = cv2.FlannBasedMatcher(idx_params, search_params)
 
     # Establish connection to robot via Websockets
     robot = py_websockets_bot.WebsocketsBot("192.168.42.1")
 
     # Create mini driver sensor configuration
     # Used to configure the inputs on the mini driver board
-    sensorConfig = py_websockets_bot.mini_driver.SensorConfiguration(configD12 = py_websockets_bot.mini_driver.PIN_FUNC_ULTRASONIC_READ)
+    # Configured to handle ultrasonic sensor readings on pin D12
+    sensorConfig = py_websockets_bot.mini_driver.SensorConfiguration(configD12 = py_websockets_bot.mini_driver.PIN_FUNC_ULTRASONIC_READ) 
 
     robot_config = robot.get_robot_config()
+    # Add and set sensor configuration to robot config
     robot_config.miniDriverSensorConfiguration = sensorConfig
     robot.set_robot_config(robot_config)
+
+    # Callback function to retrieve latest camera image
     robot.start_streaming_camera_images(getLastImage)
 
     # Sets neck degrees to initial values (should centre neck if servos configured correctly)
@@ -177,6 +180,7 @@ def setupMatch(obj_name,obj_path,alg_params):
     # Main loop processes current frame and matches features from original image
     while(True):
         try:
+            # Gets updated image and sensor readings
             robot.update()
 
             if latest_camera_image != None:
@@ -186,9 +190,9 @@ def setupMatch(obj_name,obj_path,alg_params):
                 grey = cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
 
                 # Detect and compute keypoints/descripts for stream frame
-                kp2, des2 = surf.detectAndCompute(grey,None)
+                query_kp, query_desc = surf.detectAndCompute(grey,None)
 
-                if (des2 is None) or (des2.all()):
+                if (query_desc is None) or (query_desc.all()):
                     print "No descriptors to match"
                     if match_feedback['no_desc'] > 30:
                         neck_angles, match_feedback = rc.lookAround(robot, neck_angles, match_feedback)
@@ -196,13 +200,10 @@ def setupMatch(obj_name,obj_path,alg_params):
                     match_feedback['no_desc'] += 1
                 else:
                     # Calculate descriptor matches with FLANN
-                    matches = flann.knnMatch(des1,des2,k=2)
+                    matches = flann.knnMatch(ref_desc,query_desc,k=2)
 
                     # Send keypoints/matching descriptors to find location of object in image and return image with bounding box around image
-                    img2 = matchAndBox(img1,kp1,img2,kp2,matches,alg_params)
-                    #print match_feedback['left_counter']
-                    #print match_feedback['right_counter']
-                    #print match_feedback['last_centre']
+                    img2 = matchAndBox(img1,ref_kp,img2,query_kp,matches,alg_params)
                 title = "Detecting: " + obj_name
                 # Display frame
                 cv2.imshow(title, img2)
@@ -221,4 +222,6 @@ def setupMatch(obj_name,obj_path,alg_params):
             #print "Please check camera feed - ensure it is not obscured"
     robot.disconnect()
     cv2.destroyAllWindows()
+    latest_camera_image = None
+
 
